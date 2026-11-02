@@ -90,6 +90,8 @@ class BBAccount {
             .hyundai
         case "kia":
             .kia
+        case "genesis":
+            .genesis
         case "fake":
             .fake
         default:

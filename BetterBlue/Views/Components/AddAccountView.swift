@@ -179,6 +179,11 @@ struct AddAccountView: View {
                 }
             }
             .onChange(of: selectedBrand) { _, newValue in
+                // Genesis supports only Canada and does not accept Hyundai Europe refresh tokens.
+                if newValue == .genesis {
+                    selectedRegion = .canada
+                    useToken = false
+                }
                 if newValue == .fake && username.isEmpty && password.isEmpty {
                     username = "fake-\(UUID().uuidString.prefix(8).lowercased())@betterblue.com"
                     password = "betterblue"
@@ -188,7 +193,10 @@ struct AddAccountView: View {
             // Only show region picker for non-fake accounts
             if selectedBrand != .fake {
                 Picker("Region", selection: $selectedRegion) {
-                    ForEach(Region.allCases, id: \.self) { region in
+                    ForEach(
+                        selectedBrand == .genesis ? supportedRegions(for: selectedBrand) : Region.allCases,
+                        id: \.self
+                    ) { region in
                         Text(region.displayName).tag(region)
                     }
                 }
@@ -253,9 +261,9 @@ struct AddAccountView: View {
                     SecureField("", text: $password)
                         .multilineTextAlignment(.trailing)
                         .focused($focusedField, equals: .password)
-                        .submitLabel(selectedBrand == .hyundai ? .next : .done)
+                        .submitLabel(selectedBrand == .hyundai || selectedBrand == .genesis ? .next : .done)
                         .onSubmit {
-                            if selectedBrand == .hyundai {
+                            if selectedBrand == .hyundai || selectedBrand == .genesis {
                                 focusedField = .pin
                             } else {
                                 Task {
@@ -268,7 +276,7 @@ struct AddAccountView: View {
 
             // Per-(brand, region) gating — BetterBlueKit owns the
             // matrix of which combinations actually require a PIN.
-            // Today: Hyundai USA / EU and Kia EU.
+            // Today: Hyundai USA / Canada / EU, Kia EU, and Genesis Canada.
             if requiresPin(brand: selectedBrand, region: selectedRegion) {
                 HStack {
                     Text("PIN")
@@ -320,7 +328,10 @@ struct AddAccountView: View {
                     .foregroundColor(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("BetterBlue requires an active Hyundai BlueLink or Kia Connect subscription.")
+                    Text("BetterBlue requires an active Hyundai BlueLink, Kia Connect, or Genesis Connected Services subscription.")
+                    if selectedBrand == .genesis {
+                        Text("Genesis support is in beta for gasoline vehicles in Canada.")
+                    }
                     Text("BetterBlue stores your credentials securely on your device and in iCloud.")
 
                     let link = "[GitHub](https://github.com/schmidtwmark/BetterBlue)"
